@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template for Solar Chart
+Parameters:
+  SourceUrl:
+    Type: String  
+  AllowedOrigin:
+    Type: String  
+Resources:
+  SolarBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: 
+        Ref: SourceUrl
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - Authorize
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - Ref: AllowedOrigin
+            MaxAge:  3000
+      WebsiteConfiguration:
+        IndexDocument: index.html
