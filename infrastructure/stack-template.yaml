@@ -20,5 +20,44 @@ Resources:
             AllowedOrigins:
               - Ref: AllowedOrigin
             MaxAge:  3000
-      WebsiteConfiguration:
-        IndexDocument: index.html
+  SolarOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig: 
+        Comment: "Identity for distro to access S3 bucket for solar"
+  SolarBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SolarBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: 
+              - s3:GetObject
+            Resource: !Join ["",["arn:aws:s3:::", Ref: SolarBucket, "/*"]]
+            Principal: {CanonicalUser: !GetAtt SolarOriginAccessIdentity.S3CanonicalUserId}
+  SolarDistro:
+    Type: AWS::CloudFront::Distribution
+    DependsOn:  SolarBucket
+    Properties:
+      DistributionConfig: 
+        Aliases:
+          - Ref: SourceUrl
+        DefaultCacheBehavior:
+          AllowedMethods: [HEAD, GET, OPTIONS]
+          TargetOriginId: solarAppOrigin
+          ForwardedValues:
+            QueryString: 'false'
+            Cookies:
+              Forward: all
+          ViewerProtocolPolicy: allow-all
+        DefaultRootObject: index.html
+        Enabled: True
+        Origins:
+          - DomainName: !Join ["", [Ref: SourceUrl, ".s3.amazonaws.com"]]
+            Id: solarAppOrigin
+            S3OriginConfig:
+              OriginAccessIdentity: !Join ["",["origin-access-identity/cloudfront/", Ref: SolarOriginAccessIdentity]]
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: 'true'
