@@ -61,3 +61,55 @@ Resources:
         PriceClass: PriceClass_100
         ViewerCertificate:
           CloudFrontDefaultCertificate: 'true'
+  DistroInvalidateRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "lambda.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies: 
+        - 
+          PolicyName: "allow_createinvalidation"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - 
+                Effect: "Allow"
+                Action: "cloudfront:CreateInvalidation"
+                Resource: "*"
+  DistroInvalidate: 
+    Type: AWS::Lambda::Function
+    DependsOn: 
+      - SolarDistro
+      - DistroInvalidateRole
+    Properties:
+      Environment:
+        Variables:
+          DistroId: !Ref SolarDistro
+      Code:
+        ZipFile: |
+          import boto3
+          import time
+          import os
+          def handler(event, context):
+              client = boto3.client('cloudfront')
+              invalidation = client.create_invalidation(DistributionId=os.environ['DistroId'],
+              InvalidationBatch = {
+                  'Paths': {
+                    'Quantity': 1,
+                    'Items': ['/*']
+                },
+                'CallerReference': str(time.time())
+              })
+      Handler: index.handler
+      Role: !GetAtt DistroInvalidateRole.Arn
+      Runtime: python3.6
+
