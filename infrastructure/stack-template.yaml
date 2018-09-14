@@ -8,6 +8,7 @@ Parameters:
 Resources:
   SolarBucket:
     Type: AWS::S3::Bucket
+    DependsOn: BucketNotificationPermissions
     Properties: 
       BucketName: 
         Ref: SourceUrl
@@ -20,6 +21,10 @@ Resources:
             AllowedOrigins:
               - Ref: AllowedOrigin
             MaxAge:  3000
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt DistroInvalidate.Arn          
   SolarOriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
@@ -38,7 +43,7 @@ Resources:
             Principal: {CanonicalUser: !GetAtt SolarOriginAccessIdentity.S3CanonicalUserId}
   SolarDistro:
     Type: AWS::CloudFront::Distribution
-    DependsOn:  SolarBucket
+    DependsOn: SolarBucket
     Properties:
       DistributionConfig: 
         Aliases:
@@ -81,19 +86,18 @@ Resources:
           PolicyDocument: 
             Version: "2012-10-17"
             Statement: 
-              - 
-                Effect: "Allow"
+              - Effect: "Allow"
                 Action: "cloudfront:CreateInvalidation"
+                Resource: "*"
+              - Effect: "Allow"
+                Action: "cloudfront:ListDistributions"
                 Resource: "*"
   DistroInvalidate: 
     Type: AWS::Lambda::Function
-    DependsOn: 
-      - SolarDistro
-      - DistroInvalidateRole
     Properties:
       Environment:
         Variables:
-          DistroId: !Ref SolarDistro
+          SourceUrl: !Ref SourceUrl
       Code:
         ZipFile: |
           import boto3
@@ -101,7 +105,13 @@ Resources:
           import os
           def handler(event, context):
               client = boto3.client('cloudfront')
-              invalidation = client.create_invalidation(DistributionId=os.environ['DistroId'],
+              distros = client.list_distributions()['DistributionList']['Items']
+              distroId = ''
+              for distro in distros:
+                for alias in distro['Aliases']['Items']:
+                  if alias == os.environ['SourceUrl']:
+                    distroId = distro['Id']
+              invalidation = client.create_invalidation(DistributionId=distroId,
               InvalidationBatch = {
                   'Paths': {
                     'Quantity': 1,
@@ -112,4 +122,14 @@ Resources:
       Handler: index.handler
       Role: !GetAtt DistroInvalidateRole.Arn
       Runtime: python3.6
+  BucketNotificationPermissions:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      Principal: 's3.amazonaws.com'
+      FunctionName: !GetAtt DistroInvalidate.Arn
+      SourceArn:  !Sub 'arn:aws:s3:::{SourceUrl}'
+
+
+
 
