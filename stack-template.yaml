@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template for Solar Chart
+Parameters:
+  SourceUrl:
+    Type: String  
+  AllowedOrigin:
+    Type: String  
+  HostedZone:
+    Type: String
+Resources:
+  SolarBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: BucketNotificationPermissions
+    Properties: 
+      BucketName: 
+        Ref: SourceUrl
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - Authorize
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - Ref: AllowedOrigin
+            MaxAge:  3000
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt DistroInvalidate.Arn          
+  SolarOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig: 
+        Comment: "Identity for distro to access S3 bucket for solar"
+  SolarBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SolarBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: 
+              - s3:GetObject
+            Resource: !Join ["",["arn:aws:s3:::", Ref: SolarBucket, "/*"]]
+            Principal: {CanonicalUser: !GetAtt SolarOriginAccessIdentity.S3CanonicalUserId}
+  SolarDistro:
+    Type: AWS::CloudFront::Distribution
+    DependsOn: SolarBucket
+    Properties:
+      DistributionConfig: 
+        Aliases:
+          - Ref: SourceUrl
+        DefaultCacheBehavior:
+          AllowedMethods: [HEAD, GET, OPTIONS]
+          TargetOriginId: solarAppOrigin
+          ForwardedValues:
+            QueryString: 'false'
+            Cookies:
+              Forward: all
+          ViewerProtocolPolicy: allow-all
+        DefaultRootObject: index.html
+        Enabled: True
+        Origins:
+          - DomainName: !Join ["", [Ref: SourceUrl, ".s3.amazonaws.com"]]
+            Id: solarAppOrigin
+            S3OriginConfig:
+              OriginAccessIdentity: !Join ["",["origin-access-identity/cloudfront/", Ref: SolarOriginAccessIdentity]]
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          AcmCertificateArn: 'arn:aws:acm:us-east-1:464827420904:certificate/904d9754-9f25-4b60-84e4-9472a35ab7a7'
+          SslSupportMethod: 'vip'
+  DistroInvalidateRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal: 
+              Service: 
+                - "lambda.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies: 
+        - 
+          PolicyName: "allow_createinvalidation"
+          PolicyDocument: 
+            Version: "2012-10-17"
+            Statement: 
+              - Effect: "Allow"
+                Action: "cloudfront:CreateInvalidation"
+                Resource: "*"
+              - Effect: "Allow"
+                Action: "cloudfront:ListDistributions"
+                Resource: "*"
+  DistroInvalidate: 
+    Type: AWS::Lambda::Function
+    Properties:
+      Environment:
+        Variables:
+          SourceUrl: !Ref SourceUrl
+      Code:
+        ZipFile: |
+          import boto3
+          import time
+          import os
+          def handler(event, context):
+              client = boto3.client('cloudfront')
+              distros = client.list_distributions()['DistributionList']['Items']
+              distroId = ''
+              for distro in distros:
+                for alias in distro['Aliases']['Items']:
+                  if alias == os.environ['SourceUrl']:
+                    distroId = distro['Id']
+              invalidation = client.create_invalidation(DistributionId=distroId,
+              InvalidationBatch = {
+                  'Paths': {
+                    'Quantity': 1,
+                    'Items': ['/*']
+                },
+                'CallerReference': str(time.time())
+              })
+      Handler: index.handler
+      Role: !GetAtt DistroInvalidateRole.Arn
+      Runtime: python3.6
+  BucketNotificationPermissions:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      Principal: 's3.amazonaws.com'
+      FunctionName: !GetAtt DistroInvalidate.Arn
+      SourceArn:  !Sub 'arn:aws:s3:::{SourceUrl}'
+  SolarCName:
+    Type: 'AWS::Route53::RecordSet'
+    Properties:  
+      HostedZoneName: !Ref HostedZone
+      Name: !Ref SourceUrl
+      Type: A
+      AliasTarget: 
+        DNSName:  !GetAtt SolarDistro.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+
+
+
+
