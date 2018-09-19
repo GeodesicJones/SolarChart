@@ -5,4 +5,4 @@ Generating the chart used tools we already had:  Excel to turn the raw data into
 
 So I thought, why not automate it?  Just enter the data each week, and the chart magically appears online.
 
-The chart is generated using ChartJS, with the script and the data files housed in AWS S3.  The source for the app itself is in the 'app' folder; the 'infrastructure' folder will contain the files needed to set things up on AWS.
+The chart is generated using ChartJS, with the script and the data files housed in AWS S3.  The source for the app itself is in the 'app' folder; the 'infrastructure' folder contains the files needed to set things up on AWS.
