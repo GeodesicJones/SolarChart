@@ -1,14 +1,14 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Template for Solar Chart
+Description: Template for applet to be displayed in a blog
 Parameters:
   SourceUrl:
     Type: String  
   AllowedOrigin:
     Type: String  
-  HostedZone:
+  HostedZone:    # don't forget the period at the end
     Type: String
 Resources:
-  SolarBucket:
+  SourceBucket:
     Type: AWS::S3::Bucket
     DependsOn: BucketNotificationPermissions
     Properties: 
@@ -21,54 +21,54 @@ Resources:
             AllowedMethods:
               - GET
             AllowedOrigins:
-              - Ref: AllowedOrigin
+              - !Join ["",["http://", Ref: AllowedOrigin]]
+              - !Join ["",["https://", Ref: AllowedOrigin]]
             MaxAge:  3000
       NotificationConfiguration:
         LambdaConfigurations:
           - Event: 's3:ObjectCreated:*'
             Function: !GetAtt DistroInvalidate.Arn          
-  SolarOriginAccessIdentity:
+  BucketAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig: 
-        Comment: "Identity for distro to access S3 bucket for solar"
-  SolarBucketPolicy:
+        Comment: "Identity for distro to access S3 bucket"
+  SourceBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref SolarBucket
+      Bucket: !Ref SourceBucket
       PolicyDocument:
         Statement:
           - Effect: Allow
             Action: 
               - s3:GetObject
-            Resource: !Join ["",["arn:aws:s3:::", Ref: SolarBucket, "/*"]]
-            Principal: {CanonicalUser: !GetAtt SolarOriginAccessIdentity.S3CanonicalUserId}
-  SolarDistro:
+            Resource: !Join ["",["arn:aws:s3:::", Ref: SourceBucket, "/*"]]
+            Principal: {CanonicalUser: !GetAtt BucketAccessIdentity.S3CanonicalUserId}
+  Distro:
     Type: AWS::CloudFront::Distribution
-    DependsOn: SolarBucket
+    DependsOn: SourceBucket
     Properties:
       DistributionConfig: 
         Aliases:
           - Ref: SourceUrl
         DefaultCacheBehavior:
           AllowedMethods: [HEAD, GET, OPTIONS]
-          TargetOriginId: solarAppOrigin
+          TargetOriginId: AppletOrigin
           ForwardedValues:
+            Headers: ['Origin']
             QueryString: 'false'
-            Cookies:
-              Forward: all
           ViewerProtocolPolicy: allow-all
         DefaultRootObject: index.html
         Enabled: True
         Origins:
           - DomainName: !Join ["", [Ref: SourceUrl, ".s3.amazonaws.com"]]
-            Id: solarAppOrigin
+            Id: AppletOrigin
             S3OriginConfig:
-              OriginAccessIdentity: !Join ["",["origin-access-identity/cloudfront/", Ref: SolarOriginAccessIdentity]]
+              OriginAccessIdentity: !Join ["",["origin-access-identity/cloudfront/", Ref: BucketAccessIdentity]]
         PriceClass: PriceClass_100
         ViewerCertificate:
           AcmCertificateArn: 'arn:aws:acm:us-east-1:464827420904:certificate/904d9754-9f25-4b60-84e4-9472a35ab7a7'
-          SslSupportMethod: 'vip'
+          SslSupportMethod: 'sni-only'
   DistroInvalidateRole:
     Type: AWS::IAM::Role
     Properties:
@@ -131,18 +131,13 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 's3.amazonaws.com'
       FunctionName: !GetAtt DistroInvalidate.Arn
-      SourceArn:  !Sub 'arn:aws:s3:::{SourceUrl}'
-  SolarCName:
+      SourceAccount: !Ref 'AWS::AccountId'
+  DistroAlias:
     Type: 'AWS::Route53::RecordSet'
     Properties:  
       HostedZoneName: !Ref HostedZone
       Name: !Ref SourceUrl
       Type: A
       AliasTarget: 
-        DNSName:  !GetAtt SolarDistro.DomainName
-        HostedZoneId: Z2FDTNDATAQYW2
-
-
-
-
-
+        DNSName:  !GetAtt Distro.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone id
