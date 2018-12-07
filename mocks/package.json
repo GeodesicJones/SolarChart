@@ -1,0 +1,16 @@
+{
+  "name": "mocks",
+  "version": "1.0.0",
+  "description": "Mocks for testing the Solar Chart widget and admin app.",
+  "main": "api-server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mark Boyd",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.16.4",
+    "jsonwebtoken": "^8.4.0"
+  }
+}

@@ -8,7 +8,10 @@
   integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
   crossorigin="anonymous"
 ></script>
-<script src="solardata.js"></script>
+<script src="solarchart.js"></script>
 <script>
-  solarData("data2016.json", "data2018.json");
+  solarData(
+    "http://localhost:3000/data/data2016",
+    "http://localhost:3000/data/data2018"
+  );
 </script>
