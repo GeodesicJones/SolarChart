@@ -58,7 +58,7 @@ Resources:
             Headers: ['Origin']
             QueryString: 'false'
           ViewerProtocolPolicy: allow-all
-        DefaultRootObject: index.html
+        DefaultRootObject: blog-widget.html
         Enabled: True
         Origins:
           - DomainName: !Join ["", [Ref: SourceUrl, ".s3.amazonaws.com"]]
