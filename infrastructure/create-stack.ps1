@@ -10,8 +10,9 @@ $stackName = $subdomain
 $templateName = 'stack-template.yaml'
 $deployBucket = "deploy-$subdomain.$domain.com"
 
-$sourceUrl = "$subdomain.$domain.com"  # source from the perspective of the blog
-$sourceBucket = $sourceUrl
+$appSubDomain = "$subdomain.$domain.com" 
+$appBucket = "app-$appSubDomain"
+$dataBucket = "data-$appSubDomain"
 $allowedOrigin = "$blog.blogger.com"  # origin permitted for CORS
 $hostedZone = "$domain.com."  # period on end is required
 $region = 'us-west-2'
@@ -46,7 +47,7 @@ if (!(StackExists $stackName)) {
         -TemplateURL "https://s3.amazonaws.com/$deployBucket/$templateName" `
         -Capability CAPABILITY_IAM `
         -Parameters @( `
-        @{ ParameterKey = 'SourceUrl'; ParameterValue = $sourceUrl}, `
+        @{ ParameterKey = 'AppSubDomain'; ParameterValue = $appSubDomain}, `
         @{ ParameterKey = 'AllowedOrigin'; ParameterValue = $allowedOrigin}, `
         @{ ParameterKey = 'HostedZone'; ParameterValue = $hostedZone}
     ) 
@@ -55,30 +56,36 @@ if (!(StackExists $stackName)) {
     Write-Output('Create Complete')
 }
 
-####################################################
-# Push app files to bucket for static website
-####################################################
-
-function PushAppFile([string]$path, [string]$name) {
-    Write-S3Object -BucketName $sourceBucket `
+function UploadFile([string]$path, [string]$name, [string]$bucket) {
+    Write-S3Object -BucketName $bucket `
         -Key $name `
         -File "$path/$name" `
         -Region $region
 }
 
+# Fix api paths in widget
+if (!(Test-Path "./temp")) {
+    New-Item -Path "." -Name "temp" -ItemType "directory"
+}
+Copy-Item "../app/blog-widget.html" -Destination "./temp"
+$widgetContent = Get-Content -path './temp/blog-widget.html'  -Raw
+$widgetContent = $widgetContent.Replace("data2016", "https://api-$appSubdomain/&key=data2016")
+$widgetContent = $widgetContent.Replace("data2018", "https://api-$appSubdomain/&key=data2018")
+Set-Content -Path './temp/blog-widget.html' -Value $widgetContent
+
 Write-Host 'Pushing files...'
 
-PushAppFile '../app' 'blog-widget.html'
-PushAppFile '../app' 'solarchart.js'
-PushAppFile '../data' 'data2016.json'
-PushAppFile '../data' 'data2018.json'
+UploadFile './temp' 'blog-widget.html' $appBucket
+UploadFile '../app' 'solarchart.js' $appBucket
+UploadFile '../data' 'data2016.json' $dataBucket
+UploadFile '../data' 'data2018.json' $dataBucket
 
 Write-Host 'Invalidating distro...'
 
 $distroId = 0
 $distros = Get-CFDistributionList -Region $region
 foreach ($distro in $distros) {
-    if ($distro.Aliases[0].Items = $sourceUrl) {
+    if ($distro.Aliases[0].Items = $appSubDomain) {
         $distroId = $distro.Id
     }
 }

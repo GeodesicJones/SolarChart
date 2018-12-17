@@ -15,17 +15,20 @@ function solarData(dataUrl2016, dataUrl2018) {
   ];
   var ctx = document.getElementById("myChart").getContext("2d");
 
-  function makeSeries(json) {
+  function makeSeries(rawDataString) {
     var seriesData = [];
-    var rawData = json.data;
-    for (var i = 1; i < rawData.length; i++) {
-      var currentDayOfYear = moment(rawData[i].date, "MM/DD/YYYY").dayOfYear();
-      var previousDayOfYear = moment(
-        rawData[i - 1].date,
+    var rawDataJson = JSON.parse(rawDataString).data;
+    for (var i = 1; i < rawDataJson.length; i++) {
+      var currentDayOfYear = moment(
+        rawDataJson[i].date,
         "MM/DD/YYYY"
       ).dayOfYear();
-      var currentCumulativeProduction = rawData[i].dial;
-      var previousCumulativeProduction = rawData[i - 1].dial;
+      var previousDayOfYear = moment(
+        rawDataJson[i - 1].date,
+        "MM/DD/YYYY"
+      ).dayOfYear();
+      var currentCumulativeProduction = rawDataJson[i].dial;
+      var previousCumulativeProduction = rawDataJson[i - 1].dial;
       var averageDailyProduction =
         (currentCumulativeProduction - previousCumulativeProduction) /
         (currentDayOfYear - previousDayOfYear);

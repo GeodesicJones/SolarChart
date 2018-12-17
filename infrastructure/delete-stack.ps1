@@ -5,15 +5,20 @@ param(
 
 $region = 'us-west-2'
 $stackName = $subdomain
-$sourceBucket = "$subdomain.$domain.com"
+$appBucket = "app-$subdomain.$domain.com"
+$dataBucket = "data-$subdomain.$domain.com"
 
-Write-Output('Deleting bucket contents...')
-$bucketContents = Get-S3Object -BucketName $sourceBucket -Region $region
-foreach ( $obj in $bucketContents ) {
-    Remove-S3Object -BucketName $sourceBucket -Key $obj.Key -Region $region
+# 'cause when you delete the stack, all buckets must be empty or stack delete will fail.
+function EmptyBucket($bucketName) {
+    Write-Output('Deleting bucket contents...')
+    $bucketContents = Get-S3Object -BucketName $bucketName -Region $region
+    foreach ( $obj in $bucketContents ) {
+        Remove-S3Object -BucketName $bucketName -Key $obj.Key -Region $region
+    }
 }
-Write-Output('Deleting bucket...')
-Remove-S3Bucket -BucketName $sourceBucket -Region $region
+
+EmptyBucket $appBucket
+EmptyBucket $dataBucket
 
 Remove-CFNStack -StackName $stackName -Region $region
 Write-Output('Waiting for stack delete...')

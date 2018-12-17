@@ -1,19 +1,26 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Template for applet to be displayed in a blog
 Parameters:
-  SourceUrl:
-    Type: String  
-  AllowedOrigin:
-    Type: String  
-  HostedZone:    # don't forget the period at the end
+  AppSubDomain: # e.g. myapp.example.com
+    Type: String
+  AllowedOrigin: # blog subdomain e.g. myblog.blogspot.com
+    Type: String
+  HostedZone: # don't forget the period at the end e.g. example.com. <= note the last dot!
     Type: String
 Resources:
-  SourceBucket:
+  ###########################################################
+  # AppBucket holds the static content for the app.
+  # Since AWS doesn't provide a means to to use HTTPS with
+  # an S3 static website, the bucket's files are accessed
+  # via a CloudFront distribution.
+  # CORS is configured to allow the scripts to run while
+  # embedded in a blog page.
+  ###########################################################
+
+  AppBucket:
     Type: AWS::S3::Bucket
-    DependsOn: BucketNotificationPermissions
-    Properties: 
-      BucketName: 
-        Ref: SourceUrl
+    Properties:
+      BucketName: !Join ["", ["app-", Ref: AppSubDomain]]
       CorsConfiguration:
         CorsRules:
           - AllowedHeaders:
@@ -21,123 +28,252 @@ Resources:
             AllowedMethods:
               - GET
             AllowedOrigins:
-              - !Join ["",["http://", Ref: AllowedOrigin]]
-              - !Join ["",["https://", Ref: AllowedOrigin]]
-            MaxAge:  3000
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: 's3:ObjectCreated:*'
-            Function: !GetAtt DistroInvalidate.Arn          
-  BucketAccessIdentity:
+              - !Join ["", ["http://", Ref: AllowedOrigin]]
+              - !Join ["", ["https://", Ref: AllowedOrigin]]
+            MaxAge: 3000
+
+  ###########################################################
+  # AppBucketAccessIdentity & AppBucketPolicy allow the
+  # CloudFront distro to access AppBucket
+  ###########################################################
+
+  AppBucketAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
-      CloudFrontOriginAccessIdentityConfig: 
-        Comment: "Identity for distro to access S3 bucket"
-  SourceBucketPolicy:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: "Identity for app distro to access S3 bucket"
+  AppBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref SourceBucket
+      Bucket: !Ref AppBucket
       PolicyDocument:
         Statement:
           - Effect: Allow
-            Action: 
+            Action:
               - s3:GetObject
-            Resource: !Join ["",["arn:aws:s3:::", Ref: SourceBucket, "/*"]]
-            Principal: {CanonicalUser: !GetAtt BucketAccessIdentity.S3CanonicalUserId}
-  Distro:
+            Resource: !Join ["", ["arn:aws:s3:::", Ref: AppBucket, "/*"]]
+            Principal:
+              {
+                CanonicalUser: !GetAtt AppBucketAccessIdentity.S3CanonicalUserId,
+              }
+
+  ###########################################################
+  # CloudFront is a way to provide distributed, low-latency
+  # access points for static content.
+  # I dont' actually care about that for this application.
+  # Here, it allows HTTPS access to the AppBucket files,
+  # since S3 static website hosting inexplicably doesn't
+  # provide a way for a secure connection.
+  ###########################################################
+
+  AppDistro:
     Type: AWS::CloudFront::Distribution
-    DependsOn: SourceBucket
+    DependsOn: AppBucket
     Properties:
-      DistributionConfig: 
+      DistributionConfig:
         Aliases:
-          - Ref: SourceUrl
+          - Ref: AppSubDomain
         DefaultCacheBehavior:
           AllowedMethods: [HEAD, GET, OPTIONS]
           TargetOriginId: AppletOrigin
           ForwardedValues:
-            Headers: ['Origin']
-            QueryString: 'false'
+            Headers: ["Origin"]
+            QueryString: "false"
           ViewerProtocolPolicy: allow-all
         DefaultRootObject: blog-widget.html
         Enabled: True
         Origins:
-          - DomainName: !Join ["", [Ref: SourceUrl, ".s3.amazonaws.com"]]
+          - DomainName:
+              !Join ["", ["app-", Ref: AppSubDomain, ".s3.amazonaws.com"]]
             Id: AppletOrigin
             S3OriginConfig:
-              OriginAccessIdentity: !Join ["",["origin-access-identity/cloudfront/", Ref: BucketAccessIdentity]]
+              OriginAccessIdentity:
+                !Join [
+                  "",
+                  [
+                    "origin-access-identity/cloudfront/",
+                    Ref: AppBucketAccessIdentity,
+                  ],
+                ]
         PriceClass: PriceClass_100
         ViewerCertificate:
-          AcmCertificateArn: 'arn:aws:acm:us-east-1:464827420904:certificate/904d9754-9f25-4b60-84e4-9472a35ab7a7'
-          SslSupportMethod: 'sni-only'
-  DistroInvalidateRole:
-    Type: AWS::IAM::Role
+          AcmCertificateArn: "arn:aws:acm:us-east-1:464827420904:certificate/904d9754-9f25-4b60-84e4-9472a35ab7a7"
+          SslSupportMethod: "sni-only"
+
+  ###########################################################
+  # AppDistroAlias maps a friendly domain name
+  # (e.g. app.example.com) onto the CloudFront distro's
+  # generated name (something like fdsfdsffsd.cloudfront.net)
+  ###########################################################
+
+  AppDistroAlias:
+    Type: "AWS::Route53::RecordSet"
     Properties:
-      AssumeRolePolicyDocument: 
-        Version: "2012-10-17"
-        Statement: 
-          - 
-            Effect: "Allow"
-            Principal: 
-              Service: 
-                - "lambda.amazonaws.com"
-            Action: 
-              - "sts:AssumeRole"
-      Path: "/"
-      Policies: 
-        - 
-          PolicyName: "allow_createinvalidation"
-          PolicyDocument: 
-            Version: "2012-10-17"
-            Statement: 
-              - Effect: "Allow"
-                Action: "cloudfront:CreateInvalidation"
-                Resource: "*"
-              - Effect: "Allow"
-                Action: "cloudfront:ListDistributions"
-                Resource: "*"
-  DistroInvalidate: 
-    Type: AWS::Lambda::Function
+      HostedZoneName: !Ref HostedZone
+      Name: !Ref AppSubDomain
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt AppDistro.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # CloudFront hosted zone id
+
+  ###########################################################
+  # DataBucket holds the application's data.
+  # GetDataObject is a lambda function that reads from it
+  # DateReadRole gives the lambda permissions needed to do
+  # that.
+  ###########################################################
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join ["", ["data-", Ref: AppSubDomain]]
+  GetDataObject:
+    Type: "AWS::Lambda::Function"
     Properties:
       Environment:
         Variables:
-          SourceUrl: !Ref SourceUrl
+          BucketName: !Ref DataBucket
+      Handler: index.lambda_handler
+      Runtime: python3.6
       Code:
         ZipFile: |
           import boto3
-          import time
           import os
-          def handler(event, context):
-              client = boto3.client('cloudfront')
-              distros = client.list_distributions()['DistributionList']['Items']
-              distroId = ''
-              for distro in distros:
-                for alias in distro['Aliases']['Items']:
-                  if alias == os.environ['SourceUrl']:
-                    distroId = distro['Id']
-              invalidation = client.create_invalidation(DistributionId=distroId,
-              InvalidationBatch = {
-                  'Paths': {
-                    'Quantity': 1,
-                    'Items': ['/*']
-                },
-                'CallerReference': str(time.time())
-              })
-      Handler: index.handler
-      Role: !GetAtt DistroInvalidateRole.Arn
-      Runtime: python3.6
-  BucketNotificationPermissions:
-    Type: 'AWS::Lambda::Permission'
+          def lambda_handler(event, context):
+              s3 = boto3.resource('s3')
+              key = event['key'] 
+              bucketName = os.environ['BucketName']
+              obj = s3.Object(bucketName, key)
+              return obj.get()['Body'].read().decode('utf-8')
+      Role: !GetAtt DataReadRole.Arn
+  DataReadRole:
+    Type: AWS::IAM::Role
     Properties:
-      Action: 'lambda:InvokeFunction'
-      Principal: 's3.amazonaws.com'
-      FunctionName: !GetAtt DistroInvalidate.Arn
-      SourceAccount: !Ref 'AWS::AccountId'
-  DistroAlias:
-    Type: 'AWS::Route53::RecordSet'
-    Properties:  
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: s3read
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Join ["", ["arn:aws:s3:::", !Ref DataBucket, "/*"]]
+
+  ###########################################################
+  # AppApi defines the REST API the app uses to access data.
+  # GetDataMethod is the root GET method the app can use
+  # Lambda permission allows the method to call GetDataObject.
+  ###########################################################
+
+  AppApi:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: "SolarChartApi"
+  GetDataMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "NONE"
+      HttpMethod: "GET"
+      Integration:
+        Type: "AWS"
+        IntegrationHttpMethod: "POST" # must be POST http://docs.aws.amazon.com/lambda/latest/dg/API_Invoke.html
+        Uri:
+          !Join [
+            "",
+            [
+              "arn:aws:apigateway:",
+              !Ref "AWS::Region",
+              ":lambda:path/2015-03-31/functions/",
+              !GetAtt GetDataObject.Arn,
+              "/invocations",
+            ],
+          ]
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+        RequestParameters:
+          "integration.request.querystring.key": "method.request.querystring.key"
+        RequestTemplates:
+          application/json: |
+            {
+              "key": "$input.params('key')"
+            }
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+      RequestParameters:
+        method.request.querystring.key: false
+      ResourceId: !GetAtt AppApi.RootResourceId
+      RestApiId: !Ref AppApi
+  LambdaPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:invokeFunction"
+      FunctionName: !GetAtt GetDataObject.Arn
+      Principal: "apigateway.amazonaws.com"
+      SourceArn:
+        !Join [
+          "",
+          [
+            "arn:aws:execute-api:",
+            !Ref "AWS::Region",
+            ":",
+            !Ref "AWS::AccountId",
+            ":",
+            !Ref "AppApi",
+            "/*",
+          ],
+        ]
+
+  ###########################################################
+  # ApiDeployment and ApiStage turn the API from definition
+  # to callable API.
+  ###########################################################
+
+  ApiDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn: "GetDataMethod"
+    Properties:
+      RestApiId: !Ref AppApi
+      StageName: "DummyStage"
+  ApiStage:
+    Type: "AWS::ApiGateway::Stage"
+    Properties:
+      DeploymentId: !Ref ApiDeployment
+      RestApiId: !Ref AppApi
+      StageName: "Dev"
+
+  ###########################################################
+  # ApiAlias maps a friendly domain name
+  # (e.g. api.example.com) onto the REST API's
+  # generated name (something like
+  #   https://safdsfd.execute-api.us-west-2.amazonaws.com/Dev/)
+  ###########################################################
+
+  ApiAlias:
+    Type: "AWS::Route53::RecordSet"
+    DependsOn: [ApiDeployment, ApiStage]
+    Properties:
       HostedZoneName: !Ref HostedZone
-      Name: !Ref SourceUrl
+      Name: !Join ["", ["Api-", !Ref AppSubDomain]]
       Type: A
-      AliasTarget: 
-        DNSName:  !GetAtt Distro.DomainName
-        HostedZoneId: Z2FDTNDATAQYW2  # CloudFront hosted zone id
+      AliasTarget:
+        DNSName:
+          !Join ["", [!Ref AppApi, ".execute-api.us-west-2.amazonaws.com"]]
+        HostedZoneId: Z2OJLYMUO9EFXC # API Gateway hosted zone id for us-west-2
