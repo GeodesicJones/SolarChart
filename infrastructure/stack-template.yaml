@@ -260,20 +260,31 @@ Resources:
       StageName: "Dev"
 
   ###########################################################
-  # ApiAlias maps a friendly domain name
-  # (e.g. api.example.com) onto the REST API's
-  # generated name (something like
-  #   https://safdsfd.execute-api.us-west-2.amazonaws.com/Dev/)
+  # ApiDomainName, ApiMapping & ApiAlias map a friendly
+  # domain name (e.g. api.example.com) onto the REST API
   ###########################################################
+
+  ApiDomainName:
+    Type: "AWS::ApiGateway::DomainName"
+    Properties:
+      DomainName: !Join ["", ["api-", !Ref AppSubDomain]]
+      CertificateArn: "arn:aws:acm:us-east-1:464827420904:certificate/904d9754-9f25-4b60-84e4-9472a35ab7a7"
+
+  ApiMapping:
+    Type: "AWS::ApiGateway::BasePathMapping"
+    Properties:
+      BasePath: ""
+      DomainName: !Ref ApiDomainName
+      RestApiId: !Ref AppApi
 
   ApiAlias:
     Type: "AWS::Route53::RecordSet"
     DependsOn: [ApiDeployment, ApiStage]
     Properties:
       HostedZoneName: !Ref HostedZone
-      Name: !Join ["", ["Api-", !Ref AppSubDomain]]
+      Name: !Join ["", ["api-", !Ref AppSubDomain]]
       Type: A
       AliasTarget:
-        DNSName:
-          !Join ["", [!Ref AppApi, ".execute-api.us-west-2.amazonaws.com"]]
-        HostedZoneId: Z2OJLYMUO9EFXC # API Gateway hosted zone id for us-west-2
+        DNSName: !GetAtt ApiDomainName.DistributionDomainName
+        HostedZoneId: Z2FDTNDATAQYW2 # CloudFront hosted zone id
+
