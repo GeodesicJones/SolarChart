@@ -69,8 +69,8 @@ if (!(Test-Path "./temp")) {
 }
 Copy-Item "../app/blog-widget.html" -Destination "./temp"
 $widgetContent = Get-Content -path './temp/blog-widget.html'  -Raw
-$widgetContent = $widgetContent.Replace("data2016", "https://api-$appSubdomain/&key=data2016")
-$widgetContent = $widgetContent.Replace("data2018", "https://api-$appSubdomain/&key=data2018")
+$widgetContent = $widgetContent.Replace("data2016", "https://api-$appSubdomain/?key=data2016")
+$widgetContent = $widgetContent.Replace("data2018", "https://api-$appSubdomain/?key=data2018")
 Set-Content -Path './temp/blog-widget.html' -Value $widgetContent
 
 Write-Host 'Pushing files...'
