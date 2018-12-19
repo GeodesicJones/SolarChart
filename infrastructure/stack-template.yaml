@@ -134,18 +134,11 @@ Resources:
       Environment:
         Variables:
           BucketName: !Ref DataBucket
-      Handler: index.lambda_handler
+      Handler: index.readFile
       Runtime: python3.6
       Code:
-        ZipFile: |
-          import boto3
-          import os
-          def lambda_handler(event, context):
-              s3 = boto3.resource('s3')
-              key = event['key'] 
-              bucketName = os.environ['BucketName']
-              obj = s3.Object(bucketName, key)
-              return obj.get()['Body'].read().decode('utf-8')
+        S3Bucket: !Join ["", ["deploy-", Ref: AppSubDomain]]
+        S3Key: "index.zip"
       Role: !GetAtt DataReadRole.Arn
   DataReadRole:
     Type: AWS::IAM::Role
@@ -176,18 +169,11 @@ Resources:
       Environment:
         Variables:
           BucketName: !Ref DataBucket
-      Handler: index.lambda_handler
+      Handler: index.writeFile
       Runtime: python3.6
       Code:
-        ZipFile: |
-          import boto3
-          import os
-          def lambda_handler(event, context):
-              s3 = boto3.resource('s3')
-              content = event['content'].encode("utf-8")  # [3]
-              key = event['key']
-              bucketName = os.environ['BucketName']  # [2b]
-              s3.Bucket(bucketName).put_object(Key=key,Body=content)
+        S3Bucket: !Join ["", ["deploy-", Ref: AppSubDomain]]
+        S3Key: "index.zip"
       Role: !GetAtt DataWriteRole.Arn
   DataWriteRole:
     Type: AWS::IAM::Role

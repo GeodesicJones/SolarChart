@@ -16,81 +16,96 @@ $dataBucket = "data-$appSubDomain"
 $allowedOrigin = "$blog.blogger.com"  # origin permitted for CORS
 $hostedZone = "$domain.com."  # period on end is required
 $region = 'us-west-2'
+$zipName = 'index.zip'
 
 ####################################################
-# Push stack template to deploy bucket and execute
+# Zip dependencies and push to deploy bucket
 ####################################################
 
-function StackExists($stackName) {
-    $stacks = Get-CFNStack -Region $region
-    foreach ($stack in $stacks) {
-        if ($stack.StackName = $stackName) {
-            return true;
-        }
-    }
-    return false;
+$zipPath = "temp/$zipName"
+if (Test-Path $zipPath) {
+    Remove-Item -Path $zipPath
 }
-
-if (!(Test-S3Bucket  -BucketName $deployBucket)) {
-    New-S3Bucket -BucketName $deployBucket -Region $region
-}
-
+Compress-Archive -LiteralPath ../server/bin, ../server/jwt, ../server/index.py -DestinationPath $zipPath
 Write-S3Object -BucketName $deployBucket `
-    -Key $templateName `
-    -File $templateName `
+    -Key $zipName `
+    -File $zipPath `
     -Region $region
 
-if (!(StackExists $stackName)) {
-    New-CFNStack `
-        -StackName $stackName `
-        -Region $region `
-        -TemplateURL "https://s3.amazonaws.com/$deployBucket/$templateName" `
-        -Capability CAPABILITY_IAM `
-        -Parameters @( `
-        @{ ParameterKey = 'AppSubDomain'; ParameterValue = $appSubDomain}, `
-        @{ ParameterKey = 'AllowedOrigin'; ParameterValue = $allowedOrigin}, `
-        @{ ParameterKey = 'HostedZone'; ParameterValue = $hostedZone}
-    ) 
-    Write-Output('Waiting for create...')
-    Wait-CFNStack -StackName $stackName -Status CREATE_COMPLETE -Region $region -Timeout 7200
-    Write-Output('Create Complete')
-}
+# ####################################################
+# # Push stack template to deploy bucket and execute
+# ####################################################
 
-function UploadFile([string]$path, [string]$name, [string]$bucket) {
-    Write-S3Object -BucketName $bucket `
-        -Key $name `
-        -File "$path/$name" `
-        -Region $region
-}
+# function StackExists($stackName) {
+#     $stacks = Get-CFNStack -Region $region
+#     foreach ($stack in $stacks) {
+#         if ($stack.StackName = $stackName) {
+#             return true;
+#         }
+#     }
+#     return false;
+# }
 
-# Fix api paths in widget
-if (!(Test-Path "./temp")) {
-    New-Item -Path "." -Name "temp" -ItemType "directory"
-}
-Copy-Item "../app/blog-widget.html" -Destination "./temp"
-$widgetContent = Get-Content -path './temp/blog-widget.html'  -Raw
-$widgetContent = $widgetContent.Replace("data2016", "https://api-$appSubdomain/?key=data2016")
-$widgetContent = $widgetContent.Replace("data2018", "https://api-$appSubdomain/?key=data2018")
-Set-Content -Path './temp/blog-widget.html' -Value $widgetContent
+# if (!(Test-S3Bucket  -BucketName $deployBucket)) {
+#     New-S3Bucket -BucketName $deployBucket -Region $region
+# }
 
-Write-Host 'Pushing files...'
+# Write-S3Object -BucketName $deployBucket `
+#     -Key $templateName `
+#     -File $templateName `
+#     -Region $region
 
-UploadFile './temp' 'blog-widget.html' $appBucket
-UploadFile '../app' 'solarchart.js' $appBucket
-UploadFile '../data' 'data2016.json' $dataBucket
-UploadFile '../data' 'data2018.json' $dataBucket
+# if (!(StackExists $stackName)) {
+#     New-CFNStack `
+#         -StackName $stackName `
+#         -Region $region `
+#         -TemplateURL "https://s3.amazonaws.com/$deployBucket/$templateName" `
+#         -Capability CAPABILITY_IAM `
+#         -Parameters @( `
+#         @{ ParameterKey = 'AppSubDomain'; ParameterValue = $appSubDomain}, `
+#         @{ ParameterKey = 'AllowedOrigin'; ParameterValue = $allowedOrigin}, `
+#         @{ ParameterKey = 'HostedZone'; ParameterValue = $hostedZone}
+#     ) 
+#     Write-Output('Waiting for create...')
+#     Wait-CFNStack -StackName $stackName -Status CREATE_COMPLETE -Region $region -Timeout 7200
+#     Write-Output('Create Complete')
+# }
 
-Write-Host 'Invalidating distro...'
+# function UploadFile([string]$path, [string]$name, [string]$bucket) {
+#     Write-S3Object -BucketName $bucket `
+#         -Key $name `
+#         -File "$path/$name" `
+#         -Region $region
+# }
 
-$distroId = 0
-$distros = Get-CFDistributionList -Region $region
-foreach ($distro in $distros) {
-    if ($distro.Aliases[0].Items = $appSubDomain) {
-        $distroId = $distro.Id
-    }
-}
+# # Fix api paths in widget
+# if (!(Test-Path "./temp")) {
+#     New-Item -Path "." -Name "temp" -ItemType "directory"
+# }
+# Copy-Item "../app/blog-widget.html" -Destination "./temp"
+# $widgetContent = Get-Content -path './temp/blog-widget.html'  -Raw
+# $widgetContent = $widgetContent.Replace("data2016", "https://api-$appSubdomain/?key=data2016")
+# $widgetContent = $widgetContent.Replace("data2018", "https://api-$appSubdomain/?key=data2018")
+# Set-Content -Path './temp/blog-widget.html' -Value $widgetContent
 
-New-CFInvalidation -DistributionId $distroId -Region $region `
-    -InvalidationBatch_CallerReference (get-date).ticks `
-    -Paths_Item '/*' `
-    -Paths_Quantity 1
+# Write-Host 'Pushing files...'
+
+# UploadFile './temp' 'blog-widget.html' $appBucket
+# UploadFile '../app' 'solarchart.js' $appBucket
+# UploadFile '../data' 'data2016.json' $dataBucket
+# UploadFile '../data' 'data2018.json' $dataBucket
+
+# Write-Host 'Invalidating distro...'
+
+# $distroId = 0
+# $distros = Get-CFDistributionList -Region $region
+# foreach ($distro in $distros) {
+#     if ($distro.Aliases[0].Items = $appSubDomain) {
+#         $distroId = $distro.Id
+#     }
+# }
+
+# New-CFInvalidation -DistributionId $distroId -Region $region `
+#     -InvalidationBatch_CallerReference (get-date).ticks `
+#     -Paths_Item '/*' `
+#     -Paths_Quantity 1

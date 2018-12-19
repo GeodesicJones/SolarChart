@@ -1,2 +1,5 @@
 mocks/node_modules
 infrastructure/temp
+server/bin
+server/jwt
+server/PyJWT-1.7.1.dist-info
