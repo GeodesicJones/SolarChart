@@ -11,16 +11,16 @@ const dataFolder = "../data";
 app.use(cors());
 app.use(bodyParser.json());
 
-app.get("/data/:fileName", function(req, res) {
-  const fileName = `${dataFolder}/${req.params.fileName}.json`;
+app.get("/", function(req, res) {
+  const fileName = `${dataFolder}/${req.query.key}`;
   var data = fs.readFileSync(fileName, "utf8");
   res.send(data);
 });
 
-app.post("/data/:fileName", function(req, res) {
+app.post("/", function(req, res) {
   var token = req.headers["authorization"];
   if (token && jwt.verify(token, secret)) {
-    const fileName = `${dataFolder}/${req.params.fileName}.json`;
+    const fileName = `${dataFolder}/${req.query.key}`;
     fs.writeFileSync(fileName, req.body["text"], "utf8");
     res.send({ message: "ok" });
   } else {
