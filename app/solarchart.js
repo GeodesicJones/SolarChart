@@ -15,9 +15,8 @@ function solarData(dataUrl2016, dataUrl2018) {
   ];
   var ctx = document.getElementById("myChart").getContext("2d");
 
-  function makeSeries(rawDataString) {
+  function makeSeries(rawDataJson) {
     var seriesData = [];
-    var rawDataJson = JSON.parse(rawDataString).data;
     for (var i = 1; i < rawDataJson.length; i++) {
       var currentDayOfYear = moment(
         rawDataJson[i].date,
