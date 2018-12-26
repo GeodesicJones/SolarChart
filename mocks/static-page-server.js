@@ -1,5 +1,5 @@
 const express = require("express");
-const path = "../app";
+const path = "../app/admin/dist/admin";
 const app = express();
 const port = 4000;
 
