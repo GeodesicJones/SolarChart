@@ -55,7 +55,7 @@ Write-S3Object -BucketName $deployBucket `
     -File $templateName `
     -Region $region
 
-if (!(StackExists $stackName)) {
+if ((StackExists $stackName) -eq $false) {
     New-CFNStack `
         -StackName $stackName `
         -Region $region `
@@ -69,6 +69,21 @@ if (!(StackExists $stackName)) {
     Write-Output('Waiting for create...')
     Wait-CFNStack -StackName $stackName -Status CREATE_COMPLETE -Region $region -Timeout 7200
     Write-Output('Create Complete')
+}
+else {
+    Update-CFNStack `
+        -StackName $stackName `
+        -Region $region `
+        -TemplateURL "https://s3.amazonaws.com/$deployBucket/$templateName" `
+        -Capability CAPABILITY_IAM `
+        -Parameters @( `
+        @{ ParameterKey = 'AppSubDomain'; ParameterValue = $appSubDomain}, `
+        @{ ParameterKey = 'AllowedOrigin'; ParameterValue = $allowedOrigin}, `
+        @{ ParameterKey = 'HostedZone'; ParameterValue = $hostedZone}
+    ) 
+    Write-Output('Waiting for update...')
+    Wait-CFNStack -StackName $stackName -Status UPDATE_COMPLETE -Region $region -Timeout 7200
+    Write-Output('Update Complete')
 }
 
 function UploadFile([string]$path, [string]$name, [string]$bucket) {

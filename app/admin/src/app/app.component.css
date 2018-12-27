@@ -1,0 +1,40 @@
+* {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  margin-bottom: 0px;
+}
+
+h3 {
+  margin-top: 5px;
+}
+
+nav {
+  margin-bottom: 35px;
+  margin-top: 20px;
+  padding-left: 0px;
+}
+
+nav a {
+  list-style-type: none;
+  display: inline;
+  padding: 10px;
+  font-size: 11pt;
+  border: solid gainsboro 1px;
+  border-radius: 3px;
+  color: black;
+  text-decoration: none;
+  margin-right: 3px;
+}
+
+nav a.selected {
+  font-weight: bold;
+  font-size: 12pt;
+  border: solid black 1px;
+}
+
+.error {
+  margin-top: 10px;
+  color: red;
+}
