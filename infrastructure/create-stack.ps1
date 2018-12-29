@@ -18,6 +18,10 @@ $hostedZone = "$domain.com."  # period on end is required
 $region = 'us-west-2'
 $zipName = 'index.zip'
 
+if (!(Test-S3Bucket  -BucketName $deployBucket)) {
+    New-S3Bucket -BucketName $deployBucket -Region $region
+}
+
 ####################################################
 # Zip dependencies and push to deploy bucket
 ####################################################
@@ -39,15 +43,11 @@ Write-S3Object -BucketName $deployBucket `
 function StackExists($stackName) {
     $stacks = Get-CFNStack -Region $region
     foreach ($stack in $stacks) {
-        if ($stack.StackName = $stackName) {
-            return true;
+        if ($stack.StackName -eq $stackName) {
+            return $true;
         }
     }
-    return false;
-}
-
-if (!(Test-S3Bucket  -BucketName $deployBucket)) {
-    New-S3Bucket -BucketName $deployBucket -Region $region
+    return $false;
 }
 
 Write-S3Object -BucketName $deployBucket `

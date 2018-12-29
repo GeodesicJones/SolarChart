@@ -80,7 +80,7 @@ Resources:
             Headers: ["Origin"]
             QueryString: "false"
           ViewerProtocolPolicy: allow-all
-        DefaultRootObject: blog-widget.html
+        DefaultRootObject: index.html
         Enabled: True
         Origins:
           - DomainName:
