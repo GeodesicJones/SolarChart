@@ -1,0 +1,19 @@
+<ng-template [ngIf]="!editing">
+  <td></td>
+  <td><span (click)="edit()" class="typcn typcn-pencil"></span></td>
+  <td>{{ row.date | date: "shortDate" }}</td>
+  <td>{{ row.dial }}</td>
+  <td><span (click)="remove()" class="typcn typcn-delete"></span></td>
+</ng-template>
+<ng-template [ngIf]="editing">
+  <td><span (click)="cancel()" class="typcn typcn-cancel"></span></td>
+  <td><span (click)="save()" class="typcn typcn-tick"></span></td>
+  <td>
+    <input
+      [value]="date | date: 'shortDate'"
+      (input)="date = $event.target.value"
+    />
+  </td>
+  <td><input [(ngModel)]="dial" /></td>
+  <td style="padding-bottom: 10px;">&nbsp;</td>
+</ng-template>

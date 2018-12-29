@@ -1,0 +1,16 @@
+.label {
+  display: inline-block;
+  width: 80px;
+}
+
+.component {
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+  width: 230px;
+}
+
+button {
+  margin-top: 10px;
+  padding: 3px 10px;
+}

@@ -1,0 +1,18 @@
+<table>
+  <tr>
+    <th></th>
+    <th><span (click)="newRow()" class="typcn typcn-plus"></span></th>
+    <th>Date</th>
+    <th>Dial</th>
+    <th></th>
+  </tr>
+  <tr
+    app-data-row
+    *ngFor="let row of data"
+    [row]="row"
+    (removeRow)="remove(row)"
+    (rowChange)="save()"
+  ></tr>
+</table>
+
+<div class="error">{{ errorMsg }}</div>

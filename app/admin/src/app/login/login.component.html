@@ -1,0 +1,9 @@
+<div class="component">
+  <div><span class="label">User:</span> <input [(ngModel)]="user" /></div>
+  <div>
+    <span class="label">Password:</span>
+    <input type="password" [(ngModel)]="password" />
+  </div>
+  <button (click)="login()">Login</button>
+  <div class="error">{{ errorMsg }}</div>
+</div>
