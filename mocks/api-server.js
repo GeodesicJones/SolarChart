@@ -28,7 +28,7 @@ app.post("/", function(req, res) {
   }
 });
 
-app.post("/login", function(req, res) {
+app.post("/authenticate", function(req, res) {
   var userid = req.body["userid"];
   var password = req.body["password"];
   if (userid === "admin" && password === "password") {
