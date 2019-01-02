@@ -4,9 +4,9 @@ var bodyParser = require("body-parser");
 const app = express();
 const jwt = require("jsonwebtoken");
 const port = 3000;
-const secret = process.argv[2];
+const secret = "fdlskjfdslkfjdsl";
 const fs = require("fs");
-const dataFolder = "../data";
+const dataFolder = "./data";
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -33,7 +33,7 @@ app.post("/authenticate", function(req, res) {
   var password = req.body["password"];
   if (userid === "admin" && password === "password") {
     var token = jwt.sign("admin", secret);
-    res.send({ authorization: token });
+    res.send('"' + token + '"');
   } else {
     res.status(401).send("Unauthorized");
   }

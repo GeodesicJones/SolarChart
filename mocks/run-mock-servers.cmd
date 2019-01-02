@@ -1,5 +1,6 @@
 cd ../app/admin
-call ng build
-cd ../../mocks
-start node api-server.js f;lkdjf;lkdsjfoiew
-start node static-page-server.js
+rem call ng build
+cd ../../
+start node ./mocks/api-server.js 
+start node ./mocks/static-page-server.js
+cd mocks
