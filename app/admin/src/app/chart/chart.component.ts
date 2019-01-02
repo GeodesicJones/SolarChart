@@ -3,7 +3,7 @@ import * as moment from "moment";
 import { forkJoin } from "rxjs";
 import { HttpClient } from "@angular/common/http";
 import { Chart } from "chart.js";
-import { environment } from "../../environments/environment";
+import { DataService } from "../data.service";
 
 @Component({
   selector: "app-chart",
@@ -11,9 +11,7 @@ import { environment } from "../../environments/environment";
   styleUrls: ["./chart.component.css"]
 })
 export class ChartComponent implements OnInit {
-  constructor(private _http: HttpClient) {}
-  private dataUrl2016 = `${environment.apiEndpoint}?key=data2016.json`;
-  private dataUrl2018 = `${environment.apiEndpoint}?key=data2018.json`;
+  constructor(private _dataService: DataService, private _http: HttpClient) {}
 
   makeSeries(rawData) {
     var seriesData = [];
@@ -123,8 +121,8 @@ export class ChartComponent implements OnInit {
 
   ngOnInit() {
     forkJoin(
-      this._http.get(this.dataUrl2016),
-      this._http.get(this.dataUrl2018)
+      this._dataService.get("data2016"),
+      this._dataService.get("data2018")
     ).subscribe(res => {
       var series2016 = this.makeSeries(res[0]);
       var series2018 = this.makeSeries(res[1]);

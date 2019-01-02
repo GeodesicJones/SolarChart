@@ -20,8 +20,8 @@ app.get("/", function(req, res) {
 app.post("/", function(req, res) {
   var token = req.headers["authorization"];
   if (token && jwt.verify(token, secret)) {
-    const fileName = `${dataFolder}/${req.query.key}`;
-    fs.writeFileSync(fileName, req.body["text"], "utf8");
+    const fileName = `${dataFolder}/${req.body["key"]}`;
+    fs.writeFileSync(fileName, req.body["content"], "utf8");
     res.send({ message: "ok" });
   } else {
     res.status(403).send("Forbidden");

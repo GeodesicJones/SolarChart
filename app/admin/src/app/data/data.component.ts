@@ -52,7 +52,7 @@ export class DataComponent implements OnInit {
     this._dataService
       .get()
       .subscribe(
-        data => (this.data = _.sortBy(data, x => new Date(x.date)).reverse()),
+        data => (this.data = _.sortBy(data, x => x.date).reverse()),
         error => (this.errorMsg = error)
       );
   }

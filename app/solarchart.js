@@ -19,11 +19,11 @@ function solarData(dataUrl2016, dataUrl2018) {
     var seriesData = [];
     for (var i = 1; i < rawDataJson.length; i++) {
       var currentDayOfYear = moment(
-        rawDataJson[i].date,
+        new Date(rawDataJson[i].date),
         "MM/DD/YYYY"
       ).dayOfYear();
       var previousDayOfYear = moment(
-        rawDataJson[i - 1].date,
+        new Date(rawDataJson[i - 1].date),
         "MM/DD/YYYY"
       ).dayOfYear();
       var currentCumulativeProduction = rawDataJson[i].dial;

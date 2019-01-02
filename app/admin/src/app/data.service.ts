@@ -7,6 +7,7 @@ import {
 import { IData } from "./data";
 import { Observable } from "rxjs";
 import { throwError } from "rxjs";
+import { map } from "rxjs/operators";
 import { catchError } from "rxjs/operators";
 import { environment } from "../environments/environment";
 import { AuthService } from "./auth.service";
@@ -21,6 +22,14 @@ export class DataService {
   public get(name = "data2018"): Observable<IData[]> {
     return this._http
       .get<IData[]>(`${this._apiEndpoint}/?key=${name}.json`)
+      .pipe(
+        map(array => {
+          array.forEach(x => {
+            x.date = new Date(x.date);
+          });
+          return array;
+        })
+      )
       .pipe(catchError(this.errorHandler));
   }
 
