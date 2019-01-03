@@ -43,7 +43,9 @@ export class DataComponent implements OnInit {
   newRow() {
     this.data.unshift({
       date: new Date(),
-      dial: 0
+      dial: 0,
+      code14: 0,
+      code24: 0
     });
   }
 

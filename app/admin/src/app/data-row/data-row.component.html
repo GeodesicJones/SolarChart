@@ -2,6 +2,8 @@
   <td></td>
   <td><span (click)="edit()" class="typcn typcn-pencil"></span></td>
   <td>{{ row.date | date: "shortDate" }}</td>
+  <td>{{ row.code14 }}</td>
+  <td>{{ row.code24 }}</td>
   <td>{{ row.dial }}</td>
   <td><span (click)="remove()" class="typcn typcn-delete"></span></td>
 </ng-template>
@@ -14,6 +16,8 @@
       (input)="date = $event.target.value"
     />
   </td>
+  <td><input [(ngModel)]="code14" /></td>
+  <td><input [(ngModel)]="code24" /></td>
   <td><input [(ngModel)]="dial" /></td>
   <td style="padding-bottom: 10px;">&nbsp;</td>
 </ng-template>

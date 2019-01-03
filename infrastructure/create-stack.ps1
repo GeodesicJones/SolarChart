@@ -106,8 +106,7 @@ Write-Host 'Pushing files...'
 
 UploadFile './temp' 'blog-widget.html' $appBucket
 UploadFile '../app' 'solarchart.js' $appBucket
-UploadFile '../data' 'data2016.json' $dataBucket
-UploadFile '../data' 'data2018.json' $dataBucket
+UploadFile '../data' 'data2019.json' $dataBucket
 
 Write-S3Object -BucketName $appBucket `
     -Folder "../app/admin/dist/admin" `

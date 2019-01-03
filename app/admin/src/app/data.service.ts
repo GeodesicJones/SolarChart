@@ -19,7 +19,7 @@ import * as _ from "lodash";
 export class DataService {
   private _apiEndpoint: string = environment.apiEndpoint;
 
-  public get(name = "data2018"): Observable<IData[]> {
+  public get(name = "data2019"): Observable<IData[]> {
     return this._http
       .get<IData[]>(`${this._apiEndpoint}/?key=${name}.json`)
       .pipe(
@@ -37,7 +37,7 @@ export class DataService {
     return throwError(error.message);
   }
 
-  public save(data, name = "data2018"): Observable<any> {
+  public save(data, name = "data2019"): Observable<any> {
     data = _.sortBy(data, x => new Date(x.date));
     return this._http
       .post(

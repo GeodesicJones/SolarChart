@@ -10,6 +10,8 @@ export class DataRowComponent implements OnInit {
 
   date: Date;
   dial: Number;
+  code14: Number;
+  code24: Number;
 
   @Input() row: any;
   @Output() rowChange: EventEmitter<any> = new EventEmitter<any>();
@@ -21,17 +23,25 @@ export class DataRowComponent implements OnInit {
     this.editing = true;
   }
 
+  setDataFromRow() {
+    this.date = this.row.date;
+    this.dial = this.row.dial;
+    this.code14 = this.row.code14;
+    this.code24 = this.row.code24;
+  }
+
   save() {
     this.row.date = this.date;
     this.row.dial = this.dial;
+    this.row.code14 = this.code14;
+    this.row.code24 = this.code24;
     this.editing = false;
     this.rowChange.emit();
   }
 
   cancel() {
     this.editing = false;
-    this.date = this.row.date;
-    this.dial = this.row.dial;
+    this.setDataFromRow();
     if (!this.dial) {
       this.remove();
     }
@@ -42,8 +52,7 @@ export class DataRowComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.date = this.row.date;
-    this.dial = this.row.dial;
+    this.setDataFromRow();
     this.editing = !this.row.dial;
   }
 }
