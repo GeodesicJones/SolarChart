@@ -13,8 +13,12 @@
   $.getJSON("http://localhost:3000/?key=data2019.json").then(function(
     data2019
   ) {
-    var seriesProduced = makeProductionSeries(data2019);
-    var seriesConsumed = makeConsumptionSeries(data2019);
+    data = data2019.map(x => {
+      x.date = new Date(x.date);
+      return x;
+    });
+    var seriesProduced = makeProductionSeries(data);
+    var seriesConsumed = makeConsumptionSeries(data);
     makeCharts(seriesProduced, seriesConsumed);
   });
 </script>
