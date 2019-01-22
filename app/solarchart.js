@@ -109,7 +109,8 @@ function makeCharts(dataProduced, dataConsumed) {
               },
               beginAtZero: true,
               autoSkip: false,
-              stepSize: 1
+              stepSize: 1,
+              max: 365
             }
           }
         ],
